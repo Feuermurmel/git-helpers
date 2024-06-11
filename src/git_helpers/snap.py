@@ -81,10 +81,10 @@ def parse_args() -> Namespace:
 
 def main(branch_name: str | None) -> None:
     if branch_name is None:
-        branch_name = get_branch_name("HEAD")
+        branch_name = get_branch_name("@")
 
         if branch_name is None:
-            branch_name = "HEAD"
+            raise UserError("Not on a branch. Specify a commit message.")
 
     if not has_staged_changes():
         stage_all()
