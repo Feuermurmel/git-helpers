@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import re
 import subprocess
@@ -8,10 +9,6 @@ from pathlib import Path
 from git_helpers.util import UserError
 
 _edit_todo_env_name = "GIT_BISECTRUN_EDIT_TODO"
-
-
-def log(message):
-    print(message, file=sys.stderr, flush=True)
 
 
 def get_config(name):
@@ -118,15 +115,17 @@ def todo_editor_main(todo_path):
     todo_path.write_text(edit_todo(todo_path.read_text(), edit_commit_id))
 
 
-def entry_point():
+def entry_point() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
     try:
         if _edit_todo_env_name in os.environ:
             todo_editor_main(*sys.argv[1:])
         else:
             main(**vars(parse_args()))
-    except KeyboardInterrupt:
-        log("Operation interrupted.")
-        sys.exit(1)
     except UserError as e:
-        log(f"error: {e}")
-        sys.exit(2)
+        logging.error(f"error: {e}")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        logging.error("Operation interrupted.")
+        sys.exit(130)

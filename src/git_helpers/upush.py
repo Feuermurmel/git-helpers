@@ -1,13 +1,10 @@
+import logging
 import subprocess
 import sys
 from argparse import ArgumentParser
 from argparse import Namespace
 
 from git_helpers.util import UserError
-
-
-def log(message: str):
-    print(message, file=sys.stderr, flush=True)
 
 
 def get_config(name: str, default: "str | None" = None) -> "str | None":
@@ -58,12 +55,14 @@ def main(remote_ref: "str | None"):
         raise UserError(f"{e}")
 
 
-def entry_point():
+def entry_point() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
     try:
         main(**vars(parse_args()))
-    except KeyboardInterrupt:
-        log("Operation interrupted.")
-        sys.exit(1)
     except UserError as e:
-        log(f"error: {e}")
-        sys.exit(2)
+        logging.error(f"error: {e}")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        logging.error("Operation interrupted.")
+        sys.exit(130)

@@ -1,5 +1,5 @@
 import argparse
-import os
+import logging
 import subprocess
 import sys
 from subprocess import PIPE
@@ -7,13 +7,6 @@ from typing import IO
 from typing import Any
 
 from git_helpers.util import UserError
-
-
-def log(msg, *args):
-    print(
-        "{}: {}".format(os.path.basename(sys.argv[0]), msg.format(*args)),
-        file=sys.stderr,
-    )
 
 
 class CommandResult:
@@ -160,12 +153,14 @@ def main(branch_name, all, print):
         do_normal(message, all)
 
 
-def entry_point():
+def entry_point() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
     try:
         main(**vars(parse_args()))
     except UserError as e:
-        log("Error: {}", e)
+        logging.error(f"error: {e}")
         sys.exit(1)
     except KeyboardInterrupt:
-        log("Operation interrupted.")
-        sys.exit(2)
+        logging.error("Operation interrupted.")
+        sys.exit(130)

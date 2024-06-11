@@ -1,5 +1,6 @@
 import argparse
 import itertools
+import logging
 import os
 import re
 import subprocess
@@ -8,13 +9,6 @@ import sys
 from git_helpers.util import UserError
 
 _edit_env_variable_name = "GIT_SQUASH_EDIT"
-
-
-def log(msg, *args):
-    print(
-        "{}: {}".format(os.path.basename(sys.argv[0]), msg.format(*args)),
-        file=sys.stderr,
-    )
 
 
 def command(*args, return_exit_code=False, add_env={}):
@@ -165,12 +159,14 @@ def main():
         command_main(**vars(parse_args()))
 
 
-def entry_point():
+def entry_point() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
     try:
-        main()
+        main(**vars(parse_args()))
     except UserError as e:
-        log("Error: {}", e)
+        logging.error(f"error: {e}")
         sys.exit(1)
     except KeyboardInterrupt:
-        log("Operation interrupted.")
-        sys.exit(2)
+        logging.error("Operation interrupted.")
+        sys.exit(130)
