@@ -1,9 +1,10 @@
-import argparse
 import logging
 import os
 import re
 import subprocess
 import sys
+from argparse import ArgumentParser
+from argparse import Namespace
 from pathlib import Path
 
 from git_helpers.util import UserError
@@ -12,14 +13,14 @@ from git_helpers.util import get_stripped_output
 _edit_todo_env_name = "GIT_BISECTRUN_EDIT_TODO"
 
 
-def is_rebase_in_progress():
+def is_rebase_in_progress() -> bool:
     git_dir = Path(get_stripped_output(["git", "rev-parse", "--git-dir"]))
 
     return (git_dir / "rebase-merge").exists() or (git_dir / "rebase-apply").exists()
 
 
-def parse_args():
-    parser = argparse.ArgumentParser()
+def parse_args() -> Namespace:
+    parser = ArgumentParser()
 
     parser.add_argument("-b", "--base", default="main")
     parser.add_argument("-e", "--edit", action="store_true")
@@ -28,7 +29,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main(base, edit, command):
+def main(base: str, edit: bool, command: list[str]) -> None:
     if is_rebase_in_progress():
         raise UserError("A rebase is currently in progress.")
 
@@ -70,8 +71,8 @@ def main(base, edit, command):
                 pass
 
 
-def edit_todo(todo_str, edit_commit_id):
-    def repl_fn(match):
+def edit_todo(todo_str: str, edit_commit_id: str) -> str:
+    def repl_fn(match: re.Match[str]) -> str:
         if edit_commit_id.startswith(match.group("commit_id")):
             assert match.group("command").startswith(
                 "p"
@@ -89,8 +90,8 @@ def edit_todo(todo_str, edit_commit_id):
     )
 
 
-def todo_editor_main(todo_path):
-    todo_path = Path(todo_path)
+def todo_editor_main(todo_path_str: str) -> None:
+    todo_path = Path(todo_path_str)
     edit_commit_id = os.environ[_edit_todo_env_name]
 
     todo_path.write_text(edit_todo(todo_path.read_text(), edit_commit_id))

@@ -1,17 +1,16 @@
-import argparse
-import logging
-import os
-import re
 import subprocess
-import sys
-from pathlib import Path
+from typing import overload
 
 
 class UserError(Exception):
     pass
 
 
-def get_config(name: str, default: "str | None" = None) -> "str | None":
+@overload
+def get_config(name: str, default: str) -> str: ...
+@overload
+def get_config(name: str) -> str | None: ...
+def get_config(name: str, default: str | None = None) -> str | None:
     result = subprocess.run(["git", "config", "--null", name], stdout=subprocess.PIPE)
     values = result.stdout.split(b"\x00")[:-1]
 
@@ -23,5 +22,5 @@ def get_config(name: str, default: "str | None" = None) -> "str | None":
         return default
 
 
-def get_stripped_output(command: "list[str]"):
+def get_stripped_output(command: list[str]) -> str:
     return subprocess.check_output(command).strip().decode()

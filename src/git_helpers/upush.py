@@ -17,7 +17,7 @@ def parse_args() -> Namespace:
     return parser.parse_args()
 
 
-def main(remote_ref: "str | None"):
+def main(remote_ref: str | None) -> None:
     remote = get_config("upush.remote", "origin")
     branch = get_stripped_output(["git", "branch", "--show-current"])
 

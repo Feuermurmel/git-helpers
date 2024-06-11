@@ -2,6 +2,7 @@ import argparse
 import logging
 import subprocess
 import sys
+from argparse import Namespace
 from subprocess import PIPE
 from typing import IO
 from typing import Any
@@ -17,13 +18,13 @@ class CommandResult:
 
 
 def command(
-    *args,
-    use_stdout=False,
-    use_stderr=False,
-    stdout_on_stderr=False,
-    allow_error=False,
-    cwd=None,
-):
+    *args: str,
+    use_stdout: bool = False,
+    use_stderr: bool = False,
+    stdout_on_stderr: bool = False,
+    allow_error: bool = False,
+    cwd: str | None = None,
+) -> CommandResult:
     if use_stdout:
         assert not stdout_on_stderr
 
@@ -48,7 +49,7 @@ def command(
     return res
 
 
-def get_branch_name(ref):
+def get_branch_name(ref: str) -> str | None:
     res = command(
         "git", "symbolic-ref", "-q", "--short", ref, allow_error=True, use_stdout=True
     )
@@ -59,23 +60,23 @@ def get_branch_name(ref):
         return res.out.decode().strip()
 
 
-def has_staged_changes():
+def has_staged_changes() -> bool:
     return command("git", "diff", "--cached", "--quiet", allow_error=True).code > 0
 
 
-def get_current_rev():
+def get_current_rev() -> str:
     return command("git", "rev-parse", "HEAD", use_stdout=True).out.decode().strip()
 
 
-def stage_all():
+def stage_all() -> None:
     command("git", "add", "--all", ":/")
 
 
-def commit(message):
+def commit(message: str) -> None:
     command("git", "commit", "--no-verify", "-m", message, stdout_on_stderr=True)
 
 
-def parse_args():
+def parse_args() -> Namespace:
     parser = argparse.ArgumentParser()
 
     parser.add_argument("branch_name", nargs="?")
@@ -85,7 +86,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def do_print(message, all):
+def do_print(message: str, all: bool) -> None:
     current_commit = get_current_rev()
 
     if all:
@@ -127,7 +128,7 @@ def do_print(message, all):
     print(printed_commit)
 
 
-def do_normal(message, all):
+def do_normal(message: str, all: bool) -> None:
     if all or not has_staged_changes():
         stage_all()
 
@@ -138,14 +139,14 @@ def do_normal(message, all):
         command("git", "status")
 
 
-def main(branch_name, all, print):
+def main(branch_name: str | None, all: bool, print: bool) -> None:
     if branch_name is None:
         branch_name = get_branch_name("HEAD")
 
         if branch_name is None:
             branch_name = "HEAD"
 
-    message = "({})".format(branch_name)
+    message = f"({branch_name})"
 
     if print:
         do_print(message, all)

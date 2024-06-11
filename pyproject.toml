@@ -19,7 +19,6 @@ strict = true
 warn_unreachable = true
 extra_checks = true
 enable_error_code = "possibly-undefined, redundant-expr, truthy-iterable, truthy-bool"
-disable_error_code = ["no-untyped-def", "no-untyped-call"]
 
 [tool.pytest.ini_options]
 testpaths = "tests"

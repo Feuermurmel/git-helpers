@@ -5,13 +5,28 @@ import os
 import re
 import subprocess
 import sys
+from argparse import Namespace
+from collections.abc import Iterator
+from collections.abc import Mapping
+from typing import Literal
+from typing import overload
 
 from git_helpers.util import UserError
 
 _edit_env_variable_name = "GIT_SQUASH_EDIT"
 
 
-def command(*args, return_exit_code=False, add_env={}):
+@overload
+def command(
+    *args: str, return_exit_code: Literal[False] = ..., add_env: Mapping[str, str] = ...
+) -> bytes: ...
+@overload
+def command(
+    *args: str, return_exit_code: Literal[True], add_env: Mapping[str, str] = ...
+) -> int: ...
+def command(
+    *args: str, return_exit_code: bool = False, add_env: Mapping[str, str] = {}
+) -> int | bytes:
     env = dict(os.environ)
     env.update(add_env)
 
@@ -31,7 +46,7 @@ def command(*args, return_exit_code=False, add_env={}):
         return output
 
 
-def parse_args():
+def parse_args() -> Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("rebase_base", nargs="?")
     parser.add_argument("-n", "--dry-run", action="store_true")
@@ -39,8 +54,8 @@ def parse_args():
     return parser.parse_args()
 
 
-def get_remote_refs():
-    def iter_refs():
+def get_remote_refs() -> list[str]:
+    def iter_refs() -> Iterator[str]:
         for i in command("git", "show-ref").decode().splitlines():
             rev, ref = i.split(" ", 1)
 
@@ -50,35 +65,35 @@ def get_remote_refs():
     return list(iter_refs())
 
 
-def get_commits_not_reachable_by(base, other_commits):
+def get_commits_not_reachable_by(base: str, other_commits: list[str]) -> list[str]:
     output = command("git", "rev-list", "--no-merges", base, "--not", *other_commits)
 
     return output.decode().splitlines()
 
 
-def get_parent_commits(commit):
+def get_parent_commits(commit: str) -> list[str]:
     output = command("git", "log", "-n", "1", "--pretty=%P", commit)
 
     return output.decode().split()
 
 
-def get_commit_message(commit):
+def get_commit_message(commit: str) -> str:
     output = command("git", "show", "--quiet", "--pretty=%s", commit)
 
     return output.decode().strip()
 
 
-def group_commits_by_message(commits):
+def group_commits_by_message(commits: list[str]) -> list[list[tuple[str, str]]]:
     commits_with_messages = [(i, get_commit_message(i)) for i in commits]
     commit_order = {c: i for i, (c, _) in enumerate(commits_with_messages)}
     message_order = {m: i for i, (_, m) in enumerate(commits_with_messages)}
 
-    def sort_key(x):
+    def sort_key(x: tuple[str, str]) -> tuple[bool, int, int]:
         c, m = x
 
         return m.startswith("("), -message_order[m], -commit_order[c]
 
-    def groupby_key(x):
+    def groupby_key(x: tuple[str, str]) -> str:
         c, m = x
 
         return m
@@ -89,8 +104,8 @@ def group_commits_by_message(commits):
     return [list(x) for _, x in grouped_commits]
 
 
-def rebase(base, commits, dry_run):
-    def iter_todo_lines():
+def rebase(base: str | None, commits: list[str], dry_run: bool) -> None:
+    def iter_todo_lines() -> Iterator[str]:
         for first, *rest in group_commits_by_message(commits):
             yield "p {} {}".format(*first)
 
@@ -129,7 +144,7 @@ def rebase(base, commits, dry_run):
             last_exit_code = command("git", "rebase", "--skip", return_exit_code=True)
 
 
-def command_main(rebase_base, dry_run):
+def command_main(rebase_base: str | None, dry_run: bool) -> None:
     if rebase_base is None:
         other_commits = get_remote_refs()
     else:
@@ -151,7 +166,7 @@ def command_main(rebase_base, dry_run):
     rebase(base, rebased_commits, dry_run=dry_run)
 
 
-def main():
+def main() -> None:
     if _edit_env_variable_name in os.environ:
         with open(sys.argv[-1], "wb") as file:
             file.write(os.environ[_edit_env_variable_name].encode())
