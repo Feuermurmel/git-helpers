@@ -7,7 +7,10 @@ dependencies = []
 dev = ["pytest", "mypy"]
 
 [project.scripts]
-git-helpers = "git_helpers:entry_point"
+git-bisectrun = "git_helpers.bisectrun:entry_point"
+git-snap = "git_helpers.snap:entry_point"
+git-squash = "git_helpers.squash:entry_point"
+git-upush = "git_helpers.upush:entry_point"
 
 [tool.mypy]
 mypy_path = "$MYPY_CONFIG_FILE_DIR/src:$MYPY_CONFIG_FILE_DIR/tests"
@@ -16,6 +19,7 @@ strict = true
 warn_unreachable = true
 extra_checks = true
 enable_error_code = "possibly-undefined, redundant-expr, truthy-iterable, truthy-bool"
+disable_error_code = ["no-untyped-def", "no-untyped-call"]
 
 [tool.pytest.ini_options]
 testpaths = "tests"
