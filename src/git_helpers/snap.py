@@ -1,5 +1,6 @@
 import argparse
 import logging
+import re
 import subprocess
 import sys
 from argparse import Namespace
@@ -69,10 +70,10 @@ def stage_all() -> None:
     command("git", "add", "--all", ":/")
 
 
-def commit(subject: str) -> None:
-    args = ["--no-verify", "-m", subject]
+def commit(message: str) -> None:
+    args = ["--no-verify", "-m", message]
 
-    if subject == get_commit_message("HEAD"):
+    if message == get_commit_message("HEAD"):
         args.append("--amend")
 
     command("git", "commit", *args, stdout_on_stderr=True)
@@ -80,23 +81,32 @@ def commit(subject: str) -> None:
 
 def parse_args() -> Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("subject", nargs="?")
+    parser.add_argument("subject_or_commit_id", nargs="?")
 
     return parser.parse_args()
 
 
-def main(subject: str | None) -> None:
-    if subject is None:
-        subject = get_branch_name("HEAD")
+def main(subject_or_commit_id: str | None) -> None:
+    if subject_or_commit_id is not None and re.fullmatch(
+        "[0-9a-f]{40}", subject_or_commit_id
+    ):
+        message = get_commit_message(subject_or_commit_id)
+    else:
+        if subject_or_commit_id is None:
+            subject = get_branch_name("HEAD")
 
-        if subject is None:
-            raise UserError("Not on a branch. Specify a subject.")
+            if subject is None:
+                raise UserError("Not on a branch. Specify a subject.")
+        else:
+            subject = subject_or_commit_id
+
+        message = f"({subject})"
 
     if not has_staged_changes():
         stage_all()
 
     if has_staged_changes():
-        commit(f"({subject})")
+        commit(message)
 
     command("git", "status")
 
