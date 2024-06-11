@@ -8,6 +8,7 @@ from typing import IO
 from typing import Any
 
 from git_helpers.util import UserError
+from git_helpers.util import get_commit_message
 
 
 class CommandResult:
@@ -68,29 +69,34 @@ def stage_all() -> None:
     command("git", "add", "--all", ":/")
 
 
-def commit(message: str) -> None:
-    command("git", "commit", "--no-verify", "-m", message, stdout_on_stderr=True)
+def commit(subject: str) -> None:
+    args = ["--no-verify", "-m", subject]
+
+    if subject == get_commit_message("HEAD"):
+        args.append("--amend")
+
+    command("git", "commit", *args, stdout_on_stderr=True)
 
 
 def parse_args() -> Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("branch_name", nargs="?")
+    parser.add_argument("subject", nargs="?")
 
     return parser.parse_args()
 
 
-def main(branch_name: str | None) -> None:
-    if branch_name is None:
-        branch_name = get_branch_name("@")
+def main(subject: str | None) -> None:
+    if subject is None:
+        subject = get_branch_name("HEAD")
 
-        if branch_name is None:
-            raise UserError("Not on a branch. Specify a commit message.")
+        if subject is None:
+            raise UserError("Not on a branch. Specify a subject.")
 
     if not has_staged_changes():
         stage_all()
 
     if has_staged_changes():
-        commit(f"({branch_name})")
+        commit(f"({subject})")
 
     command("git", "status")
 

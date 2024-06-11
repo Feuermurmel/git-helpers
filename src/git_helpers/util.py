@@ -1,8 +1,9 @@
 import shlex
-import subprocess
 from pathlib import Path
 from subprocess import DEVNULL
+from subprocess import PIPE
 from subprocess import check_call
+from subprocess import check_output
 from subprocess import run
 from tempfile import TemporaryDirectory
 from textwrap import dedent
@@ -18,7 +19,7 @@ def get_config(name: str, default: str) -> str: ...
 @overload
 def get_config(name: str) -> str | None: ...
 def get_config(name: str, default: str | None = None) -> str | None:
-    result = subprocess.run(["git", "config", "--null", name], stdout=subprocess.PIPE)
+    result = run(["git", "config", "--null", name], stdout=PIPE)
     values = result.stdout.split(b"\x00")[:-1]
 
     assert values or result.returncode
@@ -30,7 +31,13 @@ def get_config(name: str, default: str | None = None) -> str | None:
 
 
 def get_stripped_output(command: list[str]) -> str:
-    return subprocess.check_output(command).strip().decode()
+    return check_output(command, text=True).strip()
+
+
+def get_commit_message(commit: str) -> str:
+    output = check_output(["git", "show", "--quiet", "--pretty=%s", commit])
+
+    return output.decode().strip()
 
 
 def git_rebase(base_arg: str, todo: str) -> None:

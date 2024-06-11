@@ -9,6 +9,7 @@ from collections.abc import Iterator
 from subprocess import check_output
 
 from git_helpers.util import UserError
+from git_helpers.util import get_commit_message
 from git_helpers.util import git_rebase
 
 
@@ -41,12 +42,6 @@ def get_parent_commits(commit: str) -> list[str]:
     return check_output(
         ["git", "log", "-n", "1", "--pretty=%P", commit], text=True
     ).split()
-
-
-def get_commit_message(commit: str) -> str:
-    return check_output(
-        ["git", "show", "--quiet", "--pretty=%s", commit], text=True
-    ).strip()
 
 
 def group_commits_by_message(commits: list[str]) -> list[list[tuple[str, str]]]:
