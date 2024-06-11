@@ -7,28 +7,9 @@ import sys
 from pathlib import Path
 
 from git_helpers.util import UserError
+from git_helpers.util import get_stripped_output
 
 _edit_todo_env_name = "GIT_BISECTRUN_EDIT_TODO"
-
-
-def get_config(name):
-    result = subprocess.run(["git", "config", "--null", name], stdout=subprocess.PIPE)
-    values = result.stdout.split(b"\x00")[:-1]
-
-    if values:
-        assert not result.returncode
-
-        (value,) = values
-
-        return value.decode()
-    else:
-        assert result.returncode
-
-        return None
-
-
-def get_stripped_output(command):
-    return subprocess.check_output(command).strip().decode()
 
 
 def is_rebase_in_progress():

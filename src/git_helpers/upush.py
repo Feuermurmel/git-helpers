@@ -5,22 +5,8 @@ from argparse import ArgumentParser
 from argparse import Namespace
 
 from git_helpers.util import UserError
-
-
-def get_config(name: str, default: "str | None" = None) -> "str | None":
-    result = subprocess.run(["git", "config", "--null", name], stdout=subprocess.PIPE)
-    values = result.stdout.split(b"\x00")[:-1]
-
-    assert values or result.returncode
-
-    if values:
-        return values[0].decode()
-    else:
-        return default
-
-
-def get_stripped_output(command: "list[str]"):
-    return subprocess.check_output(command).strip().decode()
+from git_helpers.util import get_config
+from git_helpers.util import get_stripped_output
 
 
 def parse_args() -> Namespace:
