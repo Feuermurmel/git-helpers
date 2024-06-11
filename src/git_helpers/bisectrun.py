@@ -1,14 +1,18 @@
 import logging
 import os
 import re
-import subprocess
 import sys
 from argparse import ArgumentParser
 from argparse import Namespace
 from pathlib import Path
+from subprocess import CalledProcessError
+from subprocess import check_call
+from subprocess import check_output
 
 from git_helpers.util import UserError
+from git_helpers.util import get_rebase_todo
 from git_helpers.util import get_stripped_output
+from git_helpers.util import git_rebase
 
 _edit_todo_env_name = "GIT_BISECTRUN_EDIT_TODO"
 
@@ -40,33 +44,27 @@ def main(base: str, edit: bool, command: list[str]) -> None:
     base_ref = get_stripped_output(["git", "merge-base", "HEAD", base])
 
     try:
-        subprocess.check_call(["git", "bisect", "start", "HEAD", base_ref])
-    except subprocess.CalledProcessError as e:
+        check_call(["git", "bisect", "start", "HEAD", base_ref])
+    except CalledProcessError as e:
         raise UserError(f"{e}")
     else:
         try:
-            subprocess.check_call(["git", "bisect", "run", *command])
-        except subprocess.CalledProcessError:
+            check_call(["git", "bisect", "run", *command])
+        except CalledProcessError:
             # An error message should have been printed.
             pass
 
-        subprocess.check_call(["git", "checkout", original_ref])
+        check_call(["git", "checkout", original_ref])
 
         if edit:
-            bad_ref = subprocess.check_output(
+            bad_ref = check_output(
                 ["git", "rev-parse", "refs/bisect/bad"], text=True
             ).strip()
+            todo = edit_todo(get_rebase_todo(base_ref), bad_ref)
 
             try:
-                subprocess.check_call(
-                    ["git", "rebase", "--interactive", "--rebase-merges", base_ref],
-                    env={
-                        **os.environ,
-                        "GIT_SEQUENCE_EDITOR": __file__,
-                        _edit_todo_env_name: bad_ref,
-                    },
-                )
-            except subprocess.CalledProcessError:
+                git_rebase(base_ref, todo)
+            except CalledProcessError as e:
                 # An error message should have been printed.
                 pass
 

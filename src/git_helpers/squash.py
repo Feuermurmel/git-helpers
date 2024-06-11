@@ -1,49 +1,15 @@
 import argparse
 import itertools
 import logging
-import os
 import re
 import subprocess
 import sys
 from argparse import Namespace
 from collections.abc import Iterator
-from collections.abc import Mapping
-from typing import Literal
-from typing import overload
+from subprocess import check_output
 
 from git_helpers.util import UserError
-
-_edit_env_variable_name = "GIT_SQUASH_EDIT"
-
-
-@overload
-def command(
-    *args: str, return_exit_code: Literal[False] = ..., add_env: Mapping[str, str] = ...
-) -> bytes: ...
-@overload
-def command(
-    *args: str, return_exit_code: Literal[True], add_env: Mapping[str, str] = ...
-) -> int: ...
-def command(
-    *args: str, return_exit_code: bool = False, add_env: Mapping[str, str] = {}
-) -> int | bytes:
-    env = dict(os.environ)
-    env.update(add_env)
-
-    if return_exit_code:
-        stdout = None
-    else:
-        stdout = subprocess.PIPE
-
-    process = subprocess.Popen(args, stdout=stdout, env=env)
-    output, _ = process.communicate()
-
-    if return_exit_code:
-        return process.returncode
-    else:
-        assert not process.returncode
-
-        return output
+from git_helpers.util import git_rebase
 
 
 def parse_args() -> Namespace:
@@ -56,7 +22,7 @@ def parse_args() -> Namespace:
 
 def get_remote_refs() -> list[str]:
     def iter_refs() -> Iterator[str]:
-        for i in command("git", "show-ref").decode().splitlines():
+        for i in check_output(["git", "show-ref"], text=True).splitlines():
             rev, ref = i.split(" ", 1)
 
             if re.match("refs/remotes/.*$", ref):
@@ -66,21 +32,21 @@ def get_remote_refs() -> list[str]:
 
 
 def get_commits_not_reachable_by(base: str, other_commits: list[str]) -> list[str]:
-    output = command("git", "rev-list", "--no-merges", base, "--not", *other_commits)
-
-    return output.decode().splitlines()
+    return check_output(
+        ["git", "rev-list", "--no-merges", base, "--not", *other_commits], text=True
+    ).splitlines()
 
 
 def get_parent_commits(commit: str) -> list[str]:
-    output = command("git", "log", "-n", "1", "--pretty=%P", commit)
-
-    return output.decode().split()
+    return check_output(
+        ["git", "log", "-n", "1", "--pretty=%P", commit], text=True
+    ).split()
 
 
 def get_commit_message(commit: str) -> str:
-    output = command("git", "show", "--quiet", "--pretty=%s", commit)
-
-    return output.decode().strip()
+    return check_output(
+        ["git", "show", "--quiet", "--pretty=%s", commit], text=True
+    ).strip()
 
 
 def group_commits_by_message(commits: list[str]) -> list[list[tuple[str, str]]]:
@@ -122,29 +88,13 @@ def rebase(base: str | None, commits: list[str], dry_run: bool) -> None:
         else:
             base_arg = base
 
-        last_exit_code = command(
-            "git",
-            "rebase",
-            "-i",
-            base_arg,
-            add_env={_edit_env_variable_name: todo, "GIT_SEQUENCE_EDITOR": __file__},
-            return_exit_code=True,
-        )
-
-        while last_exit_code:
-            assert last_exit_code == 1
-
-            diff_exit_code = command(
-                "git", "diff", "--quiet", "HEAD", return_exit_code=True
-            )
-
-            if diff_exit_code:
-                raise UserError("A rebase operation failed.")
-
-            last_exit_code = command("git", "rebase", "--skip", return_exit_code=True)
+        try:
+            git_rebase(base_arg, todo)
+        except subprocess.CalledProcessError as e:
+            sys.exit(e.returncode)
 
 
-def command_main(rebase_base: str | None, dry_run: bool) -> None:
+def main(rebase_base: str | None, dry_run: bool) -> None:
     if rebase_base is None:
         other_commits = get_remote_refs()
     else:
@@ -164,14 +114,6 @@ def command_main(rebase_base: str | None, dry_run: bool) -> None:
         base = parents[0]
 
     rebase(base, rebased_commits, dry_run=dry_run)
-
-
-def main() -> None:
-    if _edit_env_variable_name in os.environ:
-        with open(sys.argv[-1], "wb") as file:
-            file.write(os.environ[_edit_env_variable_name].encode())
-    else:
-        command_main(**vars(parse_args()))
 
 
 def entry_point() -> None:
