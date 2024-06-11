@@ -1,0 +1,29 @@
+[project]
+name = "git_helpers"
+version = "0.1.0"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest", "mypy"]
+
+[project.scripts]
+git-helpers = "git_helpers:entry_point"
+
+[tool.mypy]
+mypy_path = "$MYPY_CONFIG_FILE_DIR/src:$MYPY_CONFIG_FILE_DIR/tests"
+files = ["src", "tests"]
+strict = true
+warn_unreachable = true
+extra_checks = true
+enable_error_code = "possibly-undefined, redundant-expr, truthy-iterable, truthy-bool"
+
+[tool.pytest.ini_options]
+testpaths = "tests"
+
+[tool.black]
+target-version = ["py312"]
+skip-magic-trailing-comma = true
+
+[tool.isort]
+profile = "black"
+force_single_line = true

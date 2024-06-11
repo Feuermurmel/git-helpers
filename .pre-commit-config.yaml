@@ -1,0 +1,41 @@
+minimum_pre_commit_version: 3.2.0
+default_install_hook_types: [pre-commit]
+
+repos:
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        stages: [pre-commit, manual]
+  - repo: https://github.com/psf/black
+    rev: 24.4.2
+    hooks:
+      - id: black
+        stages: [pre-commit, manual]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        stages: [pre-commit, manual]
+      - id: end-of-file-fixer
+        stages: [pre-commit, manual]
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.17
+    hooks:
+      - id: mdformat
+        stages: [pre-commit, manual]
+        # Same width that black uses by default.
+        args: [--wrap=88, --number]
+  - repo: local
+    hooks:
+      - id: mypy
+        name: Run mypy
+        # Do not run with --hook-stage=manual.
+        stages: [pre-commit]
+        types: [python]
+        language: system
+        entry: venv/bin/mypy
+        # Probably faster, because a lot of information is cached and would
+        # have to be re-computed in each process.
+        require_serial: true
+        pass_filenames: false
