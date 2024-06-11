@@ -64,10 +64,6 @@ def has_staged_changes() -> bool:
     return command("git", "diff", "--cached", "--quiet", allow_error=True).code > 0
 
 
-def get_current_rev() -> str:
-    return command("git", "rev-parse", "HEAD", use_stdout=True).out.decode().strip()
-
-
 def stage_all() -> None:
     command("git", "add", "--all", ":/")
 
@@ -78,80 +74,25 @@ def commit(message: str) -> None:
 
 def parse_args() -> Namespace:
     parser = argparse.ArgumentParser()
-
     parser.add_argument("branch_name", nargs="?")
-    parser.add_argument("-a", "--all", action="store_true")
-    parser.add_argument("-p", "--print", action="store_true")
 
     return parser.parse_args()
 
 
-def do_print(message: str, all: bool) -> None:
-    current_commit = get_current_rev()
-
-    if all:
-        if has_staged_changes():
-            commit("(staged changes)")
-            staged_changes_commit = get_current_rev()
-
-            command("git", "reset", "-q", current_commit)
-        else:
-            staged_changes_commit = current_commit
-
-        stage_all()
-
-        if has_staged_changes():
-            commit(message)
-            printed_commit = get_current_rev()
-        else:
-            printed_commit = current_commit
-    else:
-        if has_staged_changes():
-            commit(message)
-            printed_commit = get_current_rev()
-
-            staged_changes_commit = printed_commit
-        else:
-            stage_all()
-
-            if has_staged_changes():
-                commit(message)
-                printed_commit = get_current_rev()
-            else:
-                printed_commit = current_commit
-
-            staged_changes_commit = current_commit
-
-    command("git", "reset", "-q", staged_changes_commit)
-    command("git", "reset", "-q", "--soft", current_commit)
-
-    print(printed_commit)
-
-
-def do_normal(message: str, all: bool) -> None:
-    if all or not has_staged_changes():
-        stage_all()
-
-    if has_staged_changes():
-        commit(message)
-
-    if not all:
-        command("git", "status")
-
-
-def main(branch_name: str | None, all: bool, print: bool) -> None:
+def main(branch_name: str | None) -> None:
     if branch_name is None:
         branch_name = get_branch_name("HEAD")
 
         if branch_name is None:
             branch_name = "HEAD"
 
-    message = f"({branch_name})"
+    if not has_staged_changes():
+        stage_all()
 
-    if print:
-        do_print(message, all)
-    else:
-        do_normal(message, all)
+    if has_staged_changes():
+        commit(f"({branch_name})")
+
+    command("git", "status")
 
 
 def entry_point() -> None:
