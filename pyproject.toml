@@ -8,6 +8,7 @@ dev = ["pytest", "mypy"]
 
 [project.scripts]
 git-bisectrun = "git_helpers.bisectrun:entry_point"
+git-pop = "git_helpers.pop:entry_point"
 git-snap = "git_helpers.snap:entry_point"
 git-squash = "git_helpers.squash:entry_point"
 git-upush = "git_helpers.upush:entry_point"
