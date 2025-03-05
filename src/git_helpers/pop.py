@@ -1,8 +1,11 @@
 import argparse
 import logging
+import re
 import sys
 from argparse import Namespace
+from subprocess import PIPE
 from subprocess import call
+from subprocess import run
 
 from git_helpers.util import UserError
 
@@ -20,8 +23,12 @@ def main(stash: str | None) -> None:
     else:
         stash_args = [stash]
 
-    call(["git", "stash", "apply", *stash_args])
-    sys.exit(call(["git", "stash", "drop", *stash_args]))
+    result = run(["git", "stash", "apply", *stash_args], stdout=PIPE, text=True)
+
+    if not result.returncode or re.search(
+        r"^CONFLICT\b", result.stdout, flags=re.MULTILINE
+    ):
+        sys.exit(call(["git", "stash", "drop", *stash_args]))
 
 
 def entry_point() -> None:
