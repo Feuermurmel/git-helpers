@@ -6,6 +6,7 @@ from subprocess import run
 from git_helpers.git import get_branch_name
 from git_helpers.git import get_commit_message
 from git_helpers.git import has_staged_changes
+from git_helpers.git import rev_exists
 from git_helpers.git import stage_all
 from git_helpers.util import pass_parsed_args
 
@@ -13,7 +14,7 @@ from git_helpers.util import pass_parsed_args
 def commit(message: str) -> None:
     args = ["--no-verify", "-m", message]
 
-    if message == get_commit_message("HEAD"):
+    if rev_exists("HEAD") and message == get_commit_message("HEAD"):
         args.append("--amend")
 
     run(["git", "commit", *args], stdout=sys.stderr.buffer)

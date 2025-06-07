@@ -1,6 +1,7 @@
 import re
 from collections.abc import Iterator
 from subprocess import PIPE
+from subprocess import call
 from subprocess import check_output
 from subprocess import run
 from typing import overload
@@ -26,6 +27,10 @@ def get_commit_message(commit: str) -> str:
     output = check_output(["git", "show", "--quiet", "--pretty=%s", commit])
 
     return output.decode().strip()
+
+
+def rev_exists(ref: str) -> bool:
+    return call(["git", "rev-parse", "--verify", "--quiet", "HEAD"]) == 0
 
 
 def get_remote_refs() -> list[str]:
