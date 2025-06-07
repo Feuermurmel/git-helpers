@@ -8,6 +8,8 @@ from tempfile import TemporaryDirectory
 from textwrap import dedent
 from typing import NewType
 
+from git_helpers.git import get_first_parent
+from git_helpers.util import UserError
 from git_helpers.util import get_stripped_output
 
 RebaseTodo = NewType("RebaseTodo", str)
@@ -19,7 +21,14 @@ def is_rebase_in_progress() -> bool:
     return (git_dir / "rebase-merge").exists() or (git_dir / "rebase-apply").exists()
 
 
-def git_rebase(base_arg: str, todo: RebaseTodo) -> None:
+def _rebase_base_arg(base_commit: str | None) -> str:
+    if base_commit is None:
+        return "--root"
+    else:
+        return base_commit
+
+
+def git_rebase(base: str | None, todo: RebaseTodo) -> None:
     with TemporaryDirectory() as temp_dir:
         todo_file_path = Path(temp_dir) / "todo.txt"
         todo_file_path.write_text(todo)
@@ -33,12 +42,12 @@ def git_rebase(base_arg: str, todo: RebaseTodo) -> None:
                 "--interactive",
                 "--rebase-merges",
                 "--empty=drop",
-                base_arg,
+                _rebase_base_arg(base),
             ]
         )
 
 
-def get_rebase_todo(base_arg: str) -> RebaseTodo:
+def get_rebase_todo(base: str | None) -> RebaseTodo:
     with TemporaryDirectory() as temp_dir:
         todo_file_path = Path(temp_dir) / "todo.txt"
 
@@ -67,7 +76,7 @@ def get_rebase_todo(base_arg: str) -> RebaseTodo:
                 "rebase",
                 "--interactive",
                 "--rebase-merges",
-                base_arg,
+                _rebase_base_arg(base),
             ],
             stderr=DEVNULL,
         )
@@ -75,16 +84,28 @@ def get_rebase_todo(base_arg: str) -> RebaseTodo:
         return RebaseTodo(todo_file_path.read_text())
 
 
-def edit_commit(todo: RebaseTodo, edit_commit_id: str) -> RebaseTodo:
+def edit_commit(commit: str) -> None:
     def repl_fn(match: re.Match[str]) -> str:
-        if edit_commit_id.startswith(match.group("commit_id")):
-            assert match.group("command").startswith(
-                "p"
-            ), f"Unexpected command for commit: {match.group()}"
+        if commit.startswith(match.group("commit_id")):
+            if not match.group("command").startswith("p"):
+                if match.group("command").endswith("-C"):
+                    raise UserError(
+                        f"Commit {commit} is a merge commit and can't be edited."
+                    )
 
-            return f"edit {edit_commit_id}"
+                raise Exception(f"Unexpected command for commit: {match.group()}")
+
+            return f"edit {commit}"
         else:
             return match.group()
 
-    pattern = "^(?P<command>\\w+) (?P<commit_id>[a-z0-9]{7,})"
-    return RebaseTodo(re.sub(pattern, repl_fn, todo, flags=re.MULTILINE))
+    parent = get_first_parent(commit)
+    todo = get_rebase_todo(parent)
+
+    # This should be replaced with instead excluding the edited commit from
+    # the rebased commits and starting the todo list with a `break` command.
+    # https://github.com/fork-dev/Tracker/issues/2370
+    pattern = "^(?P<command>\\w+( -C)?) (?P<commit_id>[a-z0-9]{7,})"
+    todo = RebaseTodo(re.sub(pattern, repl_fn, todo, flags=re.MULTILINE))
+
+    git_rebase(parent, todo)

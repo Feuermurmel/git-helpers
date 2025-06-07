@@ -5,8 +5,6 @@ from subprocess import check_call
 from subprocess import check_output
 
 from git_helpers.rebasing import edit_commit
-from git_helpers.rebasing import get_rebase_todo
-from git_helpers.rebasing import git_rebase
 from git_helpers.rebasing import is_rebase_in_progress
 from git_helpers.util import UserError
 from git_helpers.util import get_stripped_output
@@ -51,10 +49,9 @@ def entry_point(base: str, edit: bool, command: list[str]) -> None:
             bad_ref = check_output(
                 ["git", "rev-parse", "refs/bisect/bad"], text=True
             ).strip()
-            todo = edit_commit(get_rebase_todo(base_ref), bad_ref)
 
             try:
-                git_rebase(base_ref, todo)
+                edit_commit(bad_ref)
             except CalledProcessError as e:
                 # An error message should have been printed.
                 pass

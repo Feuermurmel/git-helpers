@@ -6,7 +6,7 @@ from argparse import Namespace
 
 from git_helpers.git import get_commit_message
 from git_helpers.git import get_commits_not_reachable_by
-from git_helpers.git import get_parent_commits
+from git_helpers.git import get_first_parent
 from git_helpers.git import get_remote_refs
 from git_helpers.rebasing import RebaseTodo
 from git_helpers.rebasing import git_rebase
@@ -52,15 +52,8 @@ def rebase(commits: list[str], dry_run: bool) -> None:
     if dry_run:
         print(todo)
     else:
-        parents = get_parent_commits(commits[-1])
-
-        if parents:
-            base_arg = parents[0]
-        else:
-            base_arg = "--root"
-
         try:
-            git_rebase(base_arg, todo)
+            git_rebase(get_first_parent(commits[-1]), todo)
         except subprocess.CalledProcessError as e:
             sys.exit(e.returncode)
 

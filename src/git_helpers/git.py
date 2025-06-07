@@ -51,6 +51,15 @@ def get_parent_commits(commit: str) -> list[str]:
     ).split()
 
 
+def get_first_parent(commit: str) -> str | None:
+    parents = get_parent_commits(commit)
+
+    if parents:
+        return parents[0]
+    else:
+        return None
+
+
 def get_branch_name(ref: str) -> str | None:
     result = run(["git", "symbolic-ref", "-q", "--short", ref], stdout=PIPE)
 
