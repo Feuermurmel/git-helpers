@@ -1,4 +1,8 @@
+import logging
 import shlex
+import sys
+from argparse import Namespace
+from functools import wraps
 from pathlib import Path
 from subprocess import DEVNULL
 from subprocess import PIPE
@@ -7,11 +11,34 @@ from subprocess import check_output
 from subprocess import run
 from tempfile import TemporaryDirectory
 from textwrap import dedent
+from typing import Callable
 from typing import overload
 
 
 class UserError(Exception):
     pass
+
+
+def pass_parsed_args(
+    parse_args_fn: Callable[[], Namespace],
+) -> Callable[[Callable[..., None]], Callable[[], None]]:
+    def decorator_fn(main_fn: Callable[..., None]) -> Callable[[], None]:
+        @wraps(main_fn)
+        def main_fn_wrapper() -> None:
+            logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+            try:
+                main_fn(**vars(parse_args_fn()))
+            except UserError as e:
+                logging.error(f"error: {e}")
+                sys.exit(1)
+            except KeyboardInterrupt:
+                logging.error("Operation interrupted.")
+                sys.exit(130)
+
+        return main_fn_wrapper
+
+    return decorator_fn
 
 
 @overload

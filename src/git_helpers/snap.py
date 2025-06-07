@@ -1,5 +1,4 @@
 import argparse
-import logging
 import subprocess
 import sys
 from argparse import Namespace
@@ -7,8 +6,8 @@ from subprocess import PIPE
 from typing import IO
 from typing import Any
 
-from git_helpers.util import UserError
 from git_helpers.util import get_commit_message
+from git_helpers.util import pass_parsed_args
 
 
 class CommandResult:
@@ -85,7 +84,8 @@ def parse_args() -> Namespace:
     return parser.parse_args()
 
 
-def main(subject_words: list[str]) -> None:
+@pass_parsed_args(parse_args)
+def entry_point(subject_words: list[str]) -> None:
     if subject_words:
         subject = " ".join(subject_words)
     else:
@@ -100,16 +100,3 @@ def main(subject_words: list[str]) -> None:
         commit(message)
 
     command("git", "status")
-
-
-def entry_point() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
-
-    try:
-        main(**vars(parse_args()))
-    except UserError as e:
-        logging.error(f"error: {e}")
-        sys.exit(1)
-    except KeyboardInterrupt:
-        logging.error("Operation interrupted.")
-        sys.exit(130)

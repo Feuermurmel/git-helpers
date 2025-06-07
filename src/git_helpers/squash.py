@@ -1,6 +1,5 @@
 import argparse
 import itertools
-import logging
 import re
 import subprocess
 import sys
@@ -11,14 +10,7 @@ from subprocess import check_output
 from git_helpers.util import UserError
 from git_helpers.util import get_commit_message
 from git_helpers.util import git_rebase
-
-
-def parse_args() -> Namespace:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("rebase_base", nargs="?")
-    parser.add_argument("-n", "--dry-run", action="store_true")
-
-    return parser.parse_args()
+from git_helpers.util import pass_parsed_args
 
 
 def get_remote_refs() -> list[str]:
@@ -89,7 +81,16 @@ def rebase(base: str | None, commits: list[str], dry_run: bool) -> None:
             sys.exit(e.returncode)
 
 
-def main(rebase_base: str | None, dry_run: bool) -> None:
+def parse_args() -> Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("rebase_base", nargs="?")
+    parser.add_argument("-n", "--dry-run", action="store_true")
+
+    return parser.parse_args()
+
+
+@pass_parsed_args(parse_args)
+def entry_point(rebase_base: str | None, dry_run: bool) -> None:
     if rebase_base is None:
         other_commits = get_remote_refs()
     else:
@@ -109,16 +110,3 @@ def main(rebase_base: str | None, dry_run: bool) -> None:
         base = parents[0]
 
     rebase(base, rebased_commits, dry_run=dry_run)
-
-
-def entry_point() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
-
-    try:
-        main(**vars(parse_args()))
-    except UserError as e:
-        logging.error(f"error: {e}")
-        sys.exit(1)
-    except KeyboardInterrupt:
-        logging.error("Operation interrupted.")
-        sys.exit(130)

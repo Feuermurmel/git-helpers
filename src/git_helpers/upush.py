@@ -1,12 +1,11 @@
-import logging
 import subprocess
-import sys
 from argparse import ArgumentParser
 from argparse import Namespace
 
 from git_helpers.util import UserError
 from git_helpers.util import get_config
 from git_helpers.util import get_stripped_output
+from git_helpers.util import pass_parsed_args
 
 
 def parse_args() -> Namespace:
@@ -17,7 +16,8 @@ def parse_args() -> Namespace:
     return parser.parse_args()
 
 
-def main(remote_ref: str | None) -> None:
+@pass_parsed_args(parse_args)
+def entry_point(remote_ref: str | None) -> None:
     remote = get_config("upush.remote", "origin")
     branch = get_stripped_output(["git", "branch", "--show-current"])
 
@@ -39,16 +39,3 @@ def main(remote_ref: str | None) -> None:
         )
     except subprocess.CalledProcessError as e:
         raise UserError(f"{e}")
-
-
-def entry_point() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
-
-    try:
-        main(**vars(parse_args()))
-    except UserError as e:
-        logging.error(f"error: {e}")
-        sys.exit(1)
-    except KeyboardInterrupt:
-        logging.error("Operation interrupted.")
-        sys.exit(130)

@@ -1,5 +1,4 @@
 import argparse
-import logging
 import re
 import sys
 from argparse import Namespace
@@ -7,7 +6,7 @@ from subprocess import PIPE
 from subprocess import call
 from subprocess import run
 
-from git_helpers.util import UserError
+from git_helpers.util import pass_parsed_args
 
 
 def parse_args() -> Namespace:
@@ -17,7 +16,8 @@ def parse_args() -> Namespace:
     return parser.parse_args()
 
 
-def main(stash: str | None) -> None:
+@pass_parsed_args(parse_args)
+def entry_point(stash: str | None) -> None:
     if stash is None:
         stash_args = []
     else:
@@ -29,16 +29,3 @@ def main(stash: str | None) -> None:
         r"^CONFLICT\b", result.stdout, flags=re.MULTILINE
     ):
         sys.exit(call(["git", "stash", "drop", *stash_args]))
-
-
-def entry_point() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
-
-    try:
-        main(**vars(parse_args()))
-    except UserError as e:
-        logging.error(f"error: {e}")
-        sys.exit(1)
-    except KeyboardInterrupt:
-        logging.error("Operation interrupted.")
-        sys.exit(130)
