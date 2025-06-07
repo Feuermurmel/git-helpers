@@ -1,5 +1,4 @@
 import logging
-import os
 import re
 import sys
 from argparse import ArgumentParser
@@ -13,8 +12,6 @@ from git_helpers.util import UserError
 from git_helpers.util import get_rebase_todo
 from git_helpers.util import get_stripped_output
 from git_helpers.util import git_rebase
-
-_edit_todo_env_name = "GIT_BISECTRUN_EDIT_TODO"
 
 
 def is_rebase_in_progress() -> bool:
@@ -88,21 +85,11 @@ def edit_todo(todo_str: str, edit_commit_id: str) -> str:
     )
 
 
-def todo_editor_main(todo_path_str: str) -> None:
-    todo_path = Path(todo_path_str)
-    edit_commit_id = os.environ[_edit_todo_env_name]
-
-    todo_path.write_text(edit_todo(todo_path.read_text(), edit_commit_id))
-
-
 def entry_point() -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
     try:
-        if _edit_todo_env_name in os.environ:
-            todo_editor_main(*sys.argv[1:])
-        else:
-            main(**vars(parse_args()))
+        main(**vars(parse_args()))
     except UserError as e:
         logging.error(f"error: {e}")
         sys.exit(1)
