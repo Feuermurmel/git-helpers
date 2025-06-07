@@ -1,28 +1,13 @@
 import argparse
 import sys
 from argparse import Namespace
-from subprocess import PIPE
 from subprocess import run
 
-from git_helpers.util import get_commit_message
+from git_helpers.git import get_branch_name
+from git_helpers.git import get_commit_message
+from git_helpers.git import has_staged_changes
+from git_helpers.git import stage_all
 from git_helpers.util import pass_parsed_args
-
-
-def get_branch_name(ref: str) -> str | None:
-    result = run(["git", "symbolic-ref", "-q", "--short", ref], stdout=PIPE)
-
-    if result.returncode:
-        return None
-    else:
-        return result.stdout.decode().strip()
-
-
-def has_staged_changes() -> bool:
-    return run(["git", "diff", "--cached", "--quiet"]).returncode > 0
-
-
-def stage_all() -> None:
-    run(["git", "add", "--all", ":/"])
 
 
 def commit(message: str) -> None:

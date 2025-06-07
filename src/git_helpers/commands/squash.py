@@ -1,39 +1,17 @@
 import argparse
 import itertools
-import re
 import subprocess
 import sys
 from argparse import Namespace
-from collections.abc import Iterator
-from subprocess import check_output
 
+from git_helpers.git import get_commit_message
+from git_helpers.git import get_commits_not_reachable_by
+from git_helpers.git import get_parent_commits
+from git_helpers.git import get_remote_refs
+from git_helpers.rebasing import RebaseTodo
+from git_helpers.rebasing import git_rebase
 from git_helpers.util import UserError
-from git_helpers.util import get_commit_message
-from git_helpers.util import git_rebase
 from git_helpers.util import pass_parsed_args
-
-
-def get_remote_refs() -> list[str]:
-    def iter_refs() -> Iterator[str]:
-        for i in check_output(["git", "show-ref"], text=True).splitlines():
-            rev, ref = i.split(" ", 1)
-
-            if re.match("refs/remotes/.*$", ref):
-                yield rev
-
-    return list(iter_refs())
-
-
-def get_commits_not_reachable_by(base: str, other_commits: list[str]) -> list[str]:
-    return check_output(
-        ["git", "rev-list", "--no-merges", base, "--not", *other_commits], text=True
-    ).splitlines()
-
-
-def get_parent_commits(commit: str) -> list[str]:
-    return check_output(
-        ["git", "log", "-n", "1", "--pretty=%P", commit], text=True
-    ).split()
 
 
 def group_commits_by_message(commits: list[str]) -> list[list[tuple[str, str]]]:
@@ -57,23 +35,29 @@ def group_commits_by_message(commits: list[str]) -> list[list[tuple[str, str]]]:
     return [list(x) for _, x in grouped_commits]
 
 
-def rebase(base: str | None, commits: list[str], dry_run: bool) -> None:
-    def iter_todo_lines() -> Iterator[str]:
-        for first, *rest in group_commits_by_message(commits):
-            yield "p {} {}".format(*first)
+def create_todo(commits: list[str]) -> RebaseTodo:
+    todo_lines = []
 
-            for i in rest:
-                yield "f {} {}".format(*i)
+    for grouped_commits in group_commits_by_message(commits):
+        for i, (commit, message) in enumerate(grouped_commits):
+            command = "pick" if i == 0 else "fixup"
+            todo_lines.append(f"{command} {commit} {message}")
 
-    todo = "".join(i + "\n" for i in iter_todo_lines())
+    return RebaseTodo("".join(f"{i}\n" for i in todo_lines))
+
+
+def rebase(commits: list[str], dry_run: bool) -> None:
+    todo = create_todo(commits)
 
     if dry_run:
         print(todo)
     else:
-        if base is None:
-            base_arg = "--root"
+        parents = get_parent_commits(commits[-1])
+
+        if parents:
+            base_arg = parents[0]
         else:
-            base_arg = base
+            base_arg = "--root"
 
         try:
             git_rebase(base_arg, todo)
@@ -102,11 +86,4 @@ def entry_point(rebase_base: str | None, dry_run: bool) -> None:
     if not rebased_commits:
         raise UserError("No commits left to rebase after removing the base commits.")
 
-    parents = get_parent_commits(rebased_commits[-1])
-
-    if not parents:
-        base = None
-    else:
-        base = parents[0]
-
-    rebase(base, rebased_commits, dry_run=dry_run)
+    rebase(rebased_commits, dry_run=dry_run)

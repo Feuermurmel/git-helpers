@@ -2,8 +2,8 @@ import subprocess
 from argparse import ArgumentParser
 from argparse import Namespace
 
+from git_helpers.git import get_config
 from git_helpers.util import UserError
-from git_helpers.util import get_config
 from git_helpers.util import get_stripped_output
 from git_helpers.util import pass_parsed_args
 

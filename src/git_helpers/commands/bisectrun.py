@@ -1,41 +1,16 @@
-import re
 from argparse import ArgumentParser
 from argparse import Namespace
-from pathlib import Path
 from subprocess import CalledProcessError
 from subprocess import check_call
 from subprocess import check_output
 
+from git_helpers.rebasing import edit_commit
+from git_helpers.rebasing import get_rebase_todo
+from git_helpers.rebasing import git_rebase
+from git_helpers.rebasing import is_rebase_in_progress
 from git_helpers.util import UserError
-from git_helpers.util import get_rebase_todo
 from git_helpers.util import get_stripped_output
-from git_helpers.util import git_rebase
 from git_helpers.util import pass_parsed_args
-
-
-def is_rebase_in_progress() -> bool:
-    git_dir = Path(get_stripped_output(["git", "rev-parse", "--git-dir"]))
-
-    return (git_dir / "rebase-merge").exists() or (git_dir / "rebase-apply").exists()
-
-
-def edit_todo(todo_str: str, edit_commit_id: str) -> str:
-    def repl_fn(match: re.Match[str]) -> str:
-        if edit_commit_id.startswith(match.group("commit_id")):
-            assert match.group("command").startswith(
-                "p"
-            ), f"Unexpected command for commit: {match.group()}"
-
-            return f"edit {edit_commit_id}"
-        else:
-            return match.group()
-
-    return re.sub(
-        "^(?P<command>\\w+) (?P<commit_id>[a-z0-9]{7,})",
-        repl_fn,
-        todo_str,
-        flags=re.MULTILINE,
-    )
 
 
 def parse_args() -> Namespace:
@@ -76,7 +51,7 @@ def entry_point(base: str, edit: bool, command: list[str]) -> None:
             bad_ref = check_output(
                 ["git", "rev-parse", "refs/bisect/bad"], text=True
             ).strip()
-            todo = edit_todo(get_rebase_todo(base_ref), bad_ref)
+            todo = edit_commit(get_rebase_todo(base_ref), bad_ref)
 
             try:
                 git_rebase(base_ref, todo)
