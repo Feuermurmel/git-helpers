@@ -1,6 +1,5 @@
 import argparse
 import logging
-import re
 import subprocess
 import sys
 from argparse import Namespace
@@ -81,26 +80,18 @@ def commit(message: str) -> None:
 
 def parse_args() -> Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("subject_or_commit_id", nargs="?")
+    parser.add_argument("subject_words", metavar="SUBJECT", nargs="*")
 
     return parser.parse_args()
 
 
-def main(subject_or_commit_id: str | None) -> None:
-    if subject_or_commit_id is not None and re.fullmatch(
-        "[0-9a-f]{40}", subject_or_commit_id
-    ):
-        message = get_commit_message(subject_or_commit_id)
+def main(subject_words: list[str]) -> None:
+    if subject_words:
+        subject = " ".join(subject_words)
     else:
-        if subject_or_commit_id is None:
-            subject = get_branch_name("HEAD")
+        subject = get_branch_name("HEAD") or "HEAD"
 
-            if subject is None:
-                raise UserError("Not on a branch. Specify a subject.")
-        else:
-            subject = subject_or_commit_id
-
-        message = f"({subject})"
+    message = f"({subject})"
 
     if not has_staged_changes():
         stage_all()
