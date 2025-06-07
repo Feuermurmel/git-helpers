@@ -1,6 +1,8 @@
 [project]
 name = "git_helpers"
 version = "0.1.0"
+
+requires-python = ">= 3.12"
 dependencies = []
 
 [project.optional-dependencies]
@@ -17,15 +19,12 @@ git-upush = "git_helpers.upush:entry_point"
 mypy_path = "$MYPY_CONFIG_FILE_DIR/src:$MYPY_CONFIG_FILE_DIR/tests"
 files = ["src", "tests"]
 strict = true
-warn_unreachable = true
-extra_checks = true
-enable_error_code = "possibly-undefined, redundant-expr, truthy-iterable, truthy-bool"
+enable_error_code = "unreachable, redundant-expr, possibly-undefined, truthy-bool, truthy-iterable, unused-awaitable, explicit-override, mutable-override"
 
 [tool.pytest.ini_options]
 testpaths = "tests"
 
 [tool.black]
-target-version = ["py312"]
 skip-magic-trailing-comma = true
 
 [tool.isort]
