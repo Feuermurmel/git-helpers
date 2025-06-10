@@ -2,8 +2,8 @@ from argparse import ArgumentParser
 from argparse import Namespace
 from subprocess import CalledProcessError
 from subprocess import check_call
-from subprocess import check_output
 
+from git_helpers.git import resolve_rev
 from git_helpers.rebasing import edit_commit
 from git_helpers.rebasing import is_rebase_in_progress
 from git_helpers.util import UserError
@@ -46,9 +46,7 @@ def entry_point(base: str, edit: bool, command: list[str]) -> None:
         check_call(["git", "checkout", original_ref])
 
         if edit:
-            bad_ref = check_output(
-                ["git", "rev-parse", "refs/bisect/bad"], text=True
-            ).strip()
+            bad_ref = resolve_rev("refs/bisect/bad")
 
             try:
                 edit_commit(bad_ref)

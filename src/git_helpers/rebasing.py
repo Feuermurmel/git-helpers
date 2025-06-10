@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 from textwrap import dedent
 from typing import NewType
 
+from git_helpers.git import Rev
 from git_helpers.git import get_first_parent
 from git_helpers.util import UserError
 from git_helpers.util import get_stripped_output
@@ -21,11 +22,11 @@ def is_rebase_in_progress() -> bool:
     return (git_dir / "rebase-merge").exists() or (git_dir / "rebase-apply").exists()
 
 
-def _rebase_base_arg(base_commit: str | None) -> str:
-    if base_commit is None:
+def _rebase_base_arg(base_ref: str | None) -> str:
+    if base_ref is None:
         return "--root"
     else:
-        return base_commit
+        return base_ref
 
 
 def git_rebase(base: str | None, todo: RebaseTodo) -> None:
@@ -84,7 +85,7 @@ def get_rebase_todo(base: str | None) -> RebaseTodo:
         return RebaseTodo(todo_file_path.read_text())
 
 
-def edit_commit(commit: str) -> None:
+def edit_commit(commit: Rev) -> None:
     def repl_fn(match: re.Match[str]) -> str:
         if commit.startswith(match.group("commit_id")):
             if not match.group("command").startswith("p"):

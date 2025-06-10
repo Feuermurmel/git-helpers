@@ -4,7 +4,12 @@ from subprocess import PIPE
 from subprocess import call
 from subprocess import check_output
 from subprocess import run
+from typing import NewType
+from typing import cast
 from typing import overload
+
+# A 40-digit hex commit ID.
+Rev = NewType("Rev", str)
 
 
 @overload
@@ -23,13 +28,21 @@ def get_config(name: str, default: str | None = None) -> str | None:
         return default
 
 
-def get_commit_message(commit: str) -> str:
-    output = check_output(["git", "show", "--quiet", "--pretty=%s", commit])
+def resolve_rev(ref: str) -> Rev:
+    return Rev(
+        check_output(
+            ["git", "rev-parse", "--verify", "--end-of-options", ref, "--"], text=True
+        ).strip()
+    )
+
+
+def get_commit_message(ref: str) -> str:
+    output = check_output(["git", "show", "--quiet", "--pretty=%s", ref])
 
     return output.decode().strip()
 
 
-def rev_exists(ref: str) -> bool:
+def ref_exists(ref: str) -> bool:
     return call(["git", "rev-parse", "--verify", "--quiet", "HEAD"]) == 0
 
 
@@ -44,20 +57,21 @@ def get_remote_refs() -> list[str]:
     return list(iter_refs())
 
 
-def get_commits_not_reachable_by(base: str, other_commits: list[str]) -> list[str]:
+def get_commits_not_reachable_by(base: str, other_refs: list[str]) -> list[str]:
     return check_output(
-        ["git", "rev-list", "--no-merges", base, "--not", *other_commits], text=True
+        ["git", "rev-list", "--no-merges", base, "--not", *other_refs], text=True
     ).splitlines()
 
 
-def get_parent_commits(commit: str) -> list[str]:
-    return check_output(
-        ["git", "log", "-n", "1", "--pretty=%P", commit], text=True
-    ).split()
+def get_parent_commits(ref: str) -> list[Rev]:
+    return cast(
+        list[Rev],
+        check_output(["git", "log", "-n", "1", "--pretty=%P", ref], text=True).split(),
+    )
 
 
-def get_first_parent(commit: str) -> str | None:
-    parents = get_parent_commits(commit)
+def get_first_parent(ref: str) -> Rev | None:
+    parents = get_parent_commits(ref)
 
     if parents:
         return parents[0]
